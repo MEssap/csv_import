@@ -243,6 +243,7 @@ impl eframe::App for CsvImportApp {
                                 let file_list_height = (available_height - 80.0).max(100.0);
                                 egui::ScrollArea::vertical()
                                     .max_height(file_list_height)
+                                    .auto_shrink([false, false])
                                     .show(ui, |ui| {
                                         for file in &self.selected_files {
                                             let name = file.file_name()
