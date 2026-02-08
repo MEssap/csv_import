@@ -5,6 +5,10 @@ use eframe::egui;
 use std::path::PathBuf;
 use std::thread;
 
+// UI 常量
+const INPUT_WIDTH: f32 = 500.0;
+const COMBOBOX_WIDTH: f32 = 488.0; // 比输入框稍窄以适应 ComboBox 的下拉箭头
+
 /// GUI 应用
 pub struct CsvImportApp {
     // 配置
@@ -127,29 +131,29 @@ impl eframe::App for CsvImportApp {
                         .spacing([10.0, 8.0])
                         .show(ui, |ui| {
                             ui.label("ES 地址:");
-                            ui.add_sized([500.0, 20.0], egui::TextEdit::singleline(&mut self.es_address));
+                            ui.add_sized([INPUT_WIDTH, 20.0], egui::TextEdit::singleline(&mut self.es_address));
                             ui.end_row();
                             
                             ui.label("用户名 (可选):");
-                            ui.add_sized([500.0, 20.0], egui::TextEdit::singleline(&mut self.es_username));
+                            ui.add_sized([INPUT_WIDTH, 20.0], egui::TextEdit::singleline(&mut self.es_username));
                             ui.end_row();
                             
                             ui.label("密码 (可选):");
-                            ui.add_sized([500.0, 20.0], egui::TextEdit::singleline(&mut self.es_password).password(true));
+                            ui.add_sized([INPUT_WIDTH, 20.0], egui::TextEdit::singleline(&mut self.es_password).password(true));
                             ui.end_row();
                             
                             ui.label("索引名称:");
-                            ui.add_sized([500.0, 20.0], egui::TextEdit::singleline(&mut self.index_name));
+                            ui.add_sized([INPUT_WIDTH, 20.0], egui::TextEdit::singleline(&mut self.index_name));
                             ui.end_row();
                             
                             ui.label("批次大小:");
-                            ui.add_sized([500.0, 20.0], egui::TextEdit::singleline(&mut self.batch_size));
+                            ui.add_sized([INPUT_WIDTH, 20.0], egui::TextEdit::singleline(&mut self.batch_size));
                             ui.end_row();
                             
                             ui.label("分隔符:");
                             egui::ComboBox::from_id_source("delimiter")
                                 .selected_text(self.delimiter.to_string())
-                                .width(488.0)
+                                .width(COMBOBOX_WIDTH)
                                 .show_ui(ui, |ui| {
                                     ui.selectable_value(&mut self.delimiter, Delimiter::Auto, "自动检测");
                                     ui.selectable_value(&mut self.delimiter, Delimiter::Comma, "逗号 (,)");
@@ -353,10 +357,11 @@ impl eframe::App for CsvImportApp {
                         .stick_to_bottom(true)
                         .show(ui, |ui| {
                             for log in &self.logs {
+                                // 使用更高对比度的颜色以提高可访问性
                                 let (color, icon) = match log.level {
-                                    LogLevel::Info => (egui::Color32::from_rgb(200, 200, 200), "ℹ️"),
-                                    LogLevel::Warning => (egui::Color32::from_rgb(255, 200, 100), "⚠️"),
-                                    LogLevel::Error => (egui::Color32::from_rgb(255, 100, 100), "❌"),
+                                    LogLevel::Info => (egui::Color32::from_rgb(220, 220, 220), "ℹ️"),
+                                    LogLevel::Warning => (egui::Color32::from_rgb(255, 220, 100), "⚠️"),
+                                    LogLevel::Error => (egui::Color32::from_rgb(255, 120, 120), "❌"),
                                 };
                                 
                                 ui.colored_label(
