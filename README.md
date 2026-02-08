@@ -103,6 +103,17 @@ cargo run --release
 .\target\release\csv_import.exe  # Windows
 ```
 
+### Python 脚本（导入当前目录 CSV）
+
+如果需要命令行批量导入当前目录下的 CSV，可使用内置脚本：
+
+```bash
+pip install elasticsearch tqdm
+python scripts/import_current_dir.py
+```
+
+可通过环境变量覆盖配置（例如 `ES_URL`、`INDEX_NAME`、`CSV_GLOB`、`ES_USERNAME`）。
+
 ## 使用说明
 
 ### 基本流程

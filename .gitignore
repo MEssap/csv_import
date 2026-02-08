@@ -18,3 +18,5 @@ Thumbs.db
 # Test files
 *.csv
 test_data/
+*.import_state.json
+*.bad_lines.log
