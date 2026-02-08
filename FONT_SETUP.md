@@ -86,12 +86,11 @@ If the output contains "HTML" or other non-font types, the file is still incorre
 If the application still crashes after replacing the font:
 
 1. 检查字体文件是否真的是有效的字体文件（使用 `file` 命令）
+   Check if the font file is really a valid font file (use `file` command)
 2. 尝试使用不同的字体文件
+   Try using a different font file
 3. 保持自定义字体代码为注释状态，使用系统默认字体
-
-Check if the font file is really a valid font file (use `file` command)
-Try using a different font file
-Keep the custom font code commented out and use system default fonts
+   Keep the custom font code commented out and use system default fonts
 
 ### 中文显示为方框 / Chinese Characters Display as Boxes
 
@@ -100,9 +99,8 @@ Keep the custom font code commented out and use system default fonts
 If Chinese characters display as boxes when using system default fonts:
 
 1. 确保您的操作系统已安装中文字体
+   Ensure your operating system has Chinese fonts installed
 2. 尝试按照上述步骤启用自定义字体
+   Try enabling custom fonts following the steps above
 3. 在 Windows 上，确保已安装中文语言包
-
-Ensure your operating system has Chinese fonts installed
-Try enabling custom fonts following the steps above
-On Windows, make sure Chinese language pack is installed
+   On Windows, make sure Chinese language pack is installed

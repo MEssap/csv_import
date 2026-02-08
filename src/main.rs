@@ -69,5 +69,5 @@ fn setup_custom_fonts(ctx: &egui::Context) {
     */
     
     ctx.set_fonts(fonts);
-    log::info!("使用系统默认字体");
+    log::info!("Using system default fonts / 使用系统默认字体");
 }
