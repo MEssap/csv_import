@@ -37,12 +37,12 @@ impl ImportManager {
             })?;
         
         // 测试连接
-        self.send_log(LogLevel::Info, "正在测试 Elasticsearch 连接...");
+        self.send_log(LogLevel::Info, "正在测试 Elasticsearch 连接...".to_string());
         es_client.test_connection().map_err(|e| {
             self.send_error(format!("Elasticsearch 连接测试失败: {}", e));
             e
         })?;
-        self.send_log(LogLevel::Info, "Elasticsearch 连接成功");
+        self.send_log(LogLevel::Info, "Elasticsearch 连接成功".to_string());
         
         // 处理每个文件
         for file_path in &self.config.files {

@@ -1,5 +1,5 @@
 use crate::types::Delimiter;
-use encoding_rs::{GBK, UTF_8};
+use encoding_rs::GBK;
 use std::collections::HashMap;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read};

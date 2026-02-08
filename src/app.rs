@@ -71,10 +71,14 @@ impl Default for CsvImportApp {
 impl eframe::App for CsvImportApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         // 处理来自后台线程的消息
-        if let Some(rx) = &self.rx {
-            while let Ok(msg) = rx.try_recv() {
-                self.handle_message(msg);
-            }
+        let messages: Vec<ProgressMessage> = if let Some(rx) = &self.rx {
+            rx.try_iter().collect()
+        } else {
+            Vec::new()
+        };
+        
+        for msg in messages {
+            self.handle_message(msg);
         }
         
         // 如果正在导入，持续刷新UI

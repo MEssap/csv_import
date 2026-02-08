@@ -25,6 +25,6 @@ fn main() -> Result<(), eframe::Error> {
     eframe::run_native(
         "CSV Import",
         options,
-        Box::new(|_cc| Ok(Box::new(CsvImportApp::default()))),
+        Box::new(|_cc| Box::new(CsvImportApp::default())),
     )
 }
