@@ -36,9 +36,18 @@ fn main() -> Result<(), eframe::Error> {
 
 /// 配置自定义字体以支持中文显示
 fn setup_custom_fonts(ctx: &egui::Context) {
+    // 注意：自定义字体文件已禁用，因为当前字体文件已损坏
+    // 应用将使用系统默认字体，在 Windows 11 上通常能正确显示中文
+    // 
+    // 如需使用自定义中文字体，请执行以下步骤：
+    // 1. 从 https://fonts.google.com/noto/specimen/Noto+Sans+SC 下载有效的字体文件
+    // 2. 将字体文件保存为 assets/NotoSansSC-Regular.otf
+    // 3. 取消注释下面的代码
+    
     let mut fonts = egui::FontDefinitions::default();
     
-    // 加载 Noto Sans SC 字体以支持简体中文
+    // 取消注释以启用自定义字体（需要有效的字体文件）
+    /*
     fonts.font_data.insert(
         "noto_sans_sc".to_owned(),
         egui::FontData::from_static(include_bytes!(
@@ -46,7 +55,6 @@ fn setup_custom_fonts(ctx: &egui::Context) {
         )),
     );
     
-    // 将字体添加到字体家族列表的开头，优先使用
     fonts
         .families
         .entry(egui::FontFamily::Proportional)
@@ -58,6 +66,13 @@ fn setup_custom_fonts(ctx: &egui::Context) {
         .entry(egui::FontFamily::Monospace)
         .or_default()
         .insert(0, "noto_sans_sc".to_owned());
+    
+    log::info!("Loaded custom Chinese font / 成功加载中文字体");
+    */
+    
+    // 如果启用了上面的自定义字体，请注释掉下面这行
+    // If custom fonts above are enabled, comment out the line below
+    log::info!("Using system default fonts / 使用系统默认字体");
     
     ctx.set_fonts(fonts);
 }
