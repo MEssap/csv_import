@@ -357,7 +357,9 @@ impl eframe::App for CsvImportApp {
                             let log_height = (available_height - 160.0).max(100.0);
                             egui::ScrollArea::vertical()
                                 .max_height(log_height)
+                                .auto_shrink([false, false])
                                 .stick_to_bottom(true)
+                                .scroll_bar_visibility(egui::scroll_area::ScrollBarVisibility::AlwaysVisible)
                                 .show(ui, |ui| {
                                     for log in &self.logs {
                                         let (color, icon) = match log.level {
