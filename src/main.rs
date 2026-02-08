@@ -66,8 +66,13 @@ fn setup_custom_fonts(ctx: &egui::Context) {
         .entry(egui::FontFamily::Monospace)
         .or_default()
         .insert(0, "noto_sans_sc".to_owned());
+    
+    log::info!("Loaded custom Chinese font / 成功加载中文字体");
     */
     
-    ctx.set_fonts(fonts);
+    // 如果启用了上面的自定义字体，请注释掉下面这行
+    // If custom fonts above are enabled, comment out the line below
     log::info!("Using system default fonts / 使用系统默认字体");
+    
+    ctx.set_fonts(fonts);
 }
