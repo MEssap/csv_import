@@ -52,7 +52,7 @@ impl Default for CsvImportApp {
             es_username: String::new(),
             es_password: String::new(),
             index_name: String::new(),
-            batch_size: "1000".to_string(),
+            batch_size: "5000".to_string(),
             delimiter: Delimiter::Auto,
             
             selected_files: Vec::new(),
@@ -112,23 +112,23 @@ impl eframe::App for CsvImportApp {
                     .color(egui::Color32::from_rgb(100, 200, 255)));
             });
             
-            ui.add_space(15.0);
+            ui.add_space(10.0);
             
-            // 配置区
+            // 配置区（顶部）
             egui::Frame::group(ui.style())
                 .fill(egui::Color32::from_rgb(35, 38, 45))
                 .rounding(egui::Rounding::same(6.0))
-                .inner_margin(egui::Margin::same(12.0))
+                .inner_margin(egui::Margin::same(10.0))
                 .show(ui, |ui| {
                     ui.label(egui::RichText::new("⚙️ Elasticsearch 配置")
                         .size(16.0)
                         .color(egui::Color32::from_rgb(150, 220, 150)));
                     
-                    ui.add_space(8.0);
+                    ui.add_space(6.0);
                     
                     egui::Grid::new("config_grid")
                         .num_columns(2)
-                        .spacing([10.0, 8.0])
+                        .spacing([10.0, 6.0])
                         .show(ui, |ui| {
                             ui.label("ES 地址:");
                             ui.add_sized([INPUT_WIDTH, 20.0], egui::TextEdit::singleline(&mut self.es_address));
@@ -165,212 +165,216 @@ impl eframe::App for CsvImportApp {
                         });
                 });
             
-            ui.add_space(12.0);
+            ui.add_space(8.0);
             
-            // 文件选择区
-            egui::Frame::group(ui.style())
-                .fill(egui::Color32::from_rgb(35, 38, 45))
-                .rounding(egui::Rounding::same(6.0))
-                .inner_margin(egui::Margin::same(12.0))
-                .show(ui, |ui| {
-                    ui.label(egui::RichText::new("📁 文件选择")
-                        .size(16.0)
-                        .color(egui::Color32::from_rgb(150, 220, 150)));
+            // 下半部分：左右两栏布局
+            let available_height = ui.available_height();
+            let available_width = ui.available_width();
+            let left_width = available_width * 0.45;
+            
+            ui.horizontal_top(|ui| {
+                // 左侧：文件选择区
+                ui.vertical(|ui| {
+                    ui.set_width(left_width);
                     
-                    ui.add_space(8.0);
-                    
-                    ui.horizontal(|ui| {
-                        let button_height = 28.0;
-                        
-                        if ui.add_sized(
-                            [120.0, button_height],
-                            egui::Button::new("📄 选择文件")
-                                .fill(egui::Color32::from_rgb(60, 120, 200))
-                        ).clicked() && !self.is_importing {
-                            if let Some(files) = rfd::FileDialog::new()
-                                .add_filter("CSV", &["csv"])
-                                .pick_files()
-                            {
-                                self.selected_files = files;
-                            }
-                        }
-                        
-                        if ui.add_sized(
-                            [120.0, button_height],
-                            egui::Button::new("📂 选择文件夹")
-                                .fill(egui::Color32::from_rgb(60, 120, 200))
-                        ).clicked() && !self.is_importing {
-                            if let Some(folder) = rfd::FileDialog::new().pick_folder() {
-                                self.selected_files.clear();
-                                if let Ok(entries) = std::fs::read_dir(folder) {
-                                    for entry in entries.flatten() {
-                                        let path = entry.path();
-                                        if path.extension().and_then(|s| s.to_str()) == Some("csv") {
-                                            self.selected_files.push(path);
+                    egui::Frame::group(ui.style())
+                        .fill(egui::Color32::from_rgb(35, 38, 45))
+                        .rounding(egui::Rounding::same(6.0))
+                        .inner_margin(egui::Margin::same(10.0))
+                        .show(ui, |ui| {
+                            ui.set_width(left_width - 24.0);
+                            
+                            ui.label(egui::RichText::new("📁 文件选择")
+                                .size(16.0)
+                                .color(egui::Color32::from_rgb(150, 220, 150)));
+                            
+                            ui.add_space(6.0);
+                            
+                            ui.horizontal(|ui| {
+                                let button_height = 28.0;
+                                
+                                if ui.add_sized(
+                                    [100.0, button_height],
+                                    egui::Button::new("📄 选择文件")
+                                        .fill(egui::Color32::from_rgb(60, 120, 200))
+                                ).clicked() && !self.is_importing {
+                                    if let Some(files) = rfd::FileDialog::new()
+                                        .add_filter("CSV", &["csv"])
+                                        .pick_files()
+                                    {
+                                        self.selected_files = files;
+                                    }
+                                }
+                                
+                                if ui.add_sized(
+                                    [100.0, button_height],
+                                    egui::Button::new("📂 选择文件夹")
+                                        .fill(egui::Color32::from_rgb(60, 120, 200))
+                                ).clicked() && !self.is_importing {
+                                    if let Some(folder) = rfd::FileDialog::new().pick_folder() {
+                                        self.selected_files.clear();
+                                        if let Ok(entries) = std::fs::read_dir(folder) {
+                                            for entry in entries.flatten() {
+                                                let path = entry.path();
+                                                if path.extension().and_then(|s| s.to_str()) == Some("csv") {
+                                                    self.selected_files.push(path);
+                                                }
+                                            }
                                         }
                                     }
                                 }
+                                
+                                if ui.add_sized(
+                                    [80.0, button_height],
+                                    egui::Button::new("🗑️ 清空")
+                                        .fill(egui::Color32::from_rgb(150, 60, 60))
+                                ).clicked() && !self.is_importing {
+                                    self.selected_files.clear();
+                                }
+                            });
+                            
+                            ui.add_space(6.0);
+                            
+                            ui.label(egui::RichText::new(format!("已选择 {} 个文件", self.selected_files.len()))
+                                .color(egui::Color32::from_rgb(200, 200, 200)));
+                            
+                            if !self.selected_files.is_empty() {
+                                ui.add_space(4.0);
+                                let file_list_height = (available_height - 80.0).max(100.0);
+                                egui::ScrollArea::vertical()
+                                    .max_height(file_list_height)
+                                    .show(ui, |ui| {
+                                        for file in &self.selected_files {
+                                            let name = file.file_name()
+                                                .and_then(|n| n.to_str())
+                                                .unwrap_or("unknown");
+                                            ui.label(egui::RichText::new(name)
+                                                .color(egui::Color32::from_rgb(180, 180, 180)));
+                                        }
+                                    });
                             }
+                        });
+                });
+                
+                // 右侧：操作按钮 + 进度 + 统计 + 日志
+                ui.vertical(|ui| {
+                    // 操作按钮
+                    ui.horizontal(|ui| {
+                        let button_height = 36.0;
+                        
+                        if ui.add_sized(
+                            [130.0, button_height],
+                            egui::Button::new(egui::RichText::new("▶️ 开始导入").size(16.0))
+                                .fill(egui::Color32::from_rgb(60, 160, 60))
+                        ).clicked() && !self.is_importing {
+                            self.start_import();
                         }
                         
                         if ui.add_sized(
-                            [120.0, button_height],
-                            egui::Button::new("🗑️ 清空选择")
-                                .fill(egui::Color32::from_rgb(150, 60, 60))
-                        ).clicked() && !self.is_importing {
-                            self.selected_files.clear();
+                            [130.0, button_height],
+                            egui::Button::new(egui::RichText::new("⏹️ 停止").size(16.0))
+                                .fill(egui::Color32::from_rgb(180, 60, 60))
+                        ).clicked() && self.is_importing {
+                            self.is_importing = false;
                         }
                     });
                     
                     ui.add_space(8.0);
                     
-                    ui.label(egui::RichText::new(format!("已选择 {} 个文件", self.selected_files.len()))
-                        .color(egui::Color32::from_rgb(200, 200, 200)));
-                    
-                    if !self.selected_files.is_empty() {
-                        ui.add_space(5.0);
-                        egui::ScrollArea::vertical()
-                            .max_height(100.0)
+                    // 进度区
+                    if self.is_importing || self.stats.is_some() {
+                        egui::Frame::group(ui.style())
+                            .fill(egui::Color32::from_rgb(35, 38, 45))
+                            .rounding(egui::Rounding::same(6.0))
+                            .inner_margin(egui::Margin::same(8.0))
                             .show(ui, |ui| {
-                                for file in &self.selected_files {
-                                    ui.label(egui::RichText::new(file.display().to_string())
-                                        .color(egui::Color32::from_rgb(180, 180, 180)));
+                                ui.label(egui::RichText::new("⏳ 导入进度")
+                                    .size(14.0)
+                                    .color(egui::Color32::from_rgb(150, 220, 150)));
+                                
+                                ui.add_space(4.0);
+                                
+                                if !self.current_file.is_empty() {
+                                    ui.label(egui::RichText::new(format!("当前: {}", self.current_file))
+                                        .color(egui::Color32::from_rgb(200, 200, 200)));
                                 }
+                                
+                                ui.add_space(4.0);
+                                
+                                // 进度条独占一行
+                                ui.add(egui::ProgressBar::new(self.percentage / 100.0)
+                                    .show_percentage()
+                                    .fill(egui::Color32::from_rgb(100, 200, 255)));
+                                
+                                // 计数信息在下一行
+                                ui.label(egui::RichText::new(format!("已导入: {} / 总计: {}", self.imported, self.total))
+                                    .color(egui::Color32::from_rgb(180, 180, 180)));
                             });
+                        
+                        ui.add_space(4.0);
                     }
-                });
-            
-            ui.add_space(12.0);
-            
-            // 操作区
-            ui.horizontal(|ui| {
-                let button_height = 36.0;
-                
-                if ui.add_sized(
-                    [150.0, button_height],
-                    egui::Button::new(egui::RichText::new("▶️ 开始导入").size(16.0))
-                        .fill(egui::Color32::from_rgb(60, 160, 60))
-                ).clicked() && !self.is_importing {
-                    self.start_import();
-                }
-                
-                if ui.add_sized(
-                    [150.0, button_height],
-                    egui::Button::new(egui::RichText::new("⏹️ 停止").size(16.0))
-                        .fill(egui::Color32::from_rgb(180, 60, 60))
-                ).clicked() && self.is_importing {
-                    // 简单的停止机制：标记状态，后台线程会自然结束
-                    self.is_importing = false;
-                }
-            });
-            
-            ui.add_space(12.0);
-            
-            // 进度区
-            if self.is_importing || self.stats.is_some() {
-                egui::Frame::group(ui.style())
-                    .fill(egui::Color32::from_rgb(35, 38, 45))
-                    .rounding(egui::Rounding::same(6.0))
-                    .inner_margin(egui::Margin::same(12.0))
-                    .show(ui, |ui| {
-                        ui.label(egui::RichText::new("⏳ 导入进度")
-                            .size(16.0)
-                            .color(egui::Color32::from_rgb(150, 220, 150)));
-                        
-                        ui.add_space(8.0);
-                        
-                        if !self.current_file.is_empty() {
-                            ui.label(egui::RichText::new(format!("当前文件: {}", self.current_file))
-                                .color(egui::Color32::from_rgb(200, 200, 200)));
-                        }
-                        
-                        ui.add_space(5.0);
-                        
-                        ui.horizontal(|ui| {
-                            ui.add(egui::ProgressBar::new(self.percentage / 100.0)
-                                .show_percentage()
-                                .fill(egui::Color32::from_rgb(100, 200, 255)));
-                            ui.label(egui::RichText::new(format!("{} / {}", self.imported, self.total))
-                                .color(egui::Color32::from_rgb(180, 180, 180)));
-                        });
-                    });
-            }
-            
-            ui.add_space(12.0);
-            
-            // 统计区
-            if let Some(stats) = &self.stats {
-                egui::Frame::group(ui.style())
-                    .fill(egui::Color32::from_rgb(35, 38, 45))
-                    .rounding(egui::Rounding::same(6.0))
-                    .inner_margin(egui::Margin::same(12.0))
-                    .show(ui, |ui| {
-                        ui.label(egui::RichText::new("📊 导入统计")
-                            .size(16.0)
-                            .color(egui::Color32::from_rgb(150, 220, 150)));
-                        
-                        ui.add_space(8.0);
-                        
-                        egui::Grid::new("stats_grid")
-                            .num_columns(2)
-                            .spacing([15.0, 6.0])
+                    
+                    // 统计区
+                    if let Some(stats) = &self.stats {
+                        egui::Frame::group(ui.style())
+                            .fill(egui::Color32::from_rgb(35, 38, 45))
+                            .rounding(egui::Rounding::same(6.0))
+                            .inner_margin(egui::Margin::same(8.0))
                             .show(ui, |ui| {
-                                ui.label(egui::RichText::new("✅ 成功:").color(egui::Color32::from_rgb(100, 220, 100)));
-                                ui.label(egui::RichText::new(format!("{}", stats.total_success))
-                                    .color(egui::Color32::from_rgb(200, 200, 200)));
-                                ui.end_row();
+                                ui.label(egui::RichText::new("📊 导入统计")
+                                    .size(14.0)
+                                    .color(egui::Color32::from_rgb(150, 220, 150)));
                                 
-                                ui.label(egui::RichText::new("❌ 失败:").color(egui::Color32::from_rgb(220, 100, 100)));
-                                ui.label(egui::RichText::new(format!("{}", stats.total_failed))
-                                    .color(egui::Color32::from_rgb(200, 200, 200)));
-                                ui.end_row();
+                                ui.add_space(4.0);
                                 
-                                ui.label(egui::RichText::new("⏭️ 跳过:").color(egui::Color32::from_rgb(220, 220, 100)));
-                                ui.label(egui::RichText::new(format!("{}", stats.total_skipped))
-                                    .color(egui::Color32::from_rgb(200, 200, 200)));
-                                ui.end_row();
-                                
-                                ui.label(egui::RichText::new("⏱️ 耗时:").color(egui::Color32::from_rgb(150, 200, 220)));
-                                ui.label(egui::RichText::new(format!("{} 秒", stats.duration_secs))
-                                    .color(egui::Color32::from_rgb(200, 200, 200)));
-                                ui.end_row();
+                                ui.horizontal(|ui| {
+                                    ui.colored_label(egui::Color32::from_rgb(100, 220, 100),
+                                        format!("✅ 成功: {}", stats.total_success));
+                                    ui.colored_label(egui::Color32::from_rgb(220, 100, 100),
+                                        format!("  ❌ 失败: {}", stats.total_failed));
+                                    ui.colored_label(egui::Color32::from_rgb(220, 220, 100),
+                                        format!("  ⏭️ 跳过: {}", stats.total_skipped));
+                                    ui.colored_label(egui::Color32::from_rgb(150, 200, 220),
+                                        format!("  ⏱️ 耗时: {} 秒", stats.duration_secs));
+                                });
                             });
-                    });
-                
-                ui.add_space(12.0);
-            }
-            
-            // 日志区
-            egui::Frame::group(ui.style())
-                .fill(egui::Color32::from_rgb(35, 38, 45))
-                .rounding(egui::Rounding::same(6.0))
-                .inner_margin(egui::Margin::same(12.0))
-                .show(ui, |ui| {
-                    ui.label(egui::RichText::new("📝 日志")
-                        .size(16.0)
-                        .color(egui::Color32::from_rgb(150, 220, 150)));
+                        
+                        ui.add_space(4.0);
+                    }
                     
-                    ui.add_space(8.0);
-                    
-                    egui::ScrollArea::vertical()
-                        .max_height(200.0)
-                        .stick_to_bottom(true)
+                    // 日志区
+                    egui::Frame::group(ui.style())
+                        .fill(egui::Color32::from_rgb(35, 38, 45))
+                        .rounding(egui::Rounding::same(6.0))
+                        .inner_margin(egui::Margin::same(8.0))
                         .show(ui, |ui| {
-                            for log in &self.logs {
-                                // 使用更高对比度的颜色以提高可访问性
-                                let (color, icon) = match log.level {
-                                    LogLevel::Info => (egui::Color32::from_rgb(220, 220, 220), "ℹ️"),
-                                    LogLevel::Warning => (egui::Color32::from_rgb(255, 220, 100), "⚠️"),
-                                    LogLevel::Error => (egui::Color32::from_rgb(255, 120, 120), "❌"),
-                                };
-                                
-                                ui.colored_label(
-                                    color,
-                                    format!("{} {}", icon, log.message)
-                                );
-                            }
+                            ui.label(egui::RichText::new("📝 日志")
+                                .size(14.0)
+                                .color(egui::Color32::from_rgb(150, 220, 150)));
+                            
+                            ui.add_space(4.0);
+                            
+                            let log_height = (available_height - 160.0).max(100.0);
+                            egui::ScrollArea::vertical()
+                                .max_height(log_height)
+                                .stick_to_bottom(true)
+                                .show(ui, |ui| {
+                                    for log in &self.logs {
+                                        let (color, icon) = match log.level {
+                                            LogLevel::Info => (egui::Color32::from_rgb(220, 220, 220), "ℹ️"),
+                                            LogLevel::Warning => (egui::Color32::from_rgb(255, 220, 100), "⚠️"),
+                                            LogLevel::Error => (egui::Color32::from_rgb(255, 120, 120), "❌"),
+                                        };
+                                        
+                                        ui.colored_label(
+                                            color,
+                                            format!("{} {}", icon, log.message)
+                                        );
+                                    }
+                                });
                         });
                 });
+            });
         });
     }
 }

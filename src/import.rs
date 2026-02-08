@@ -44,6 +44,49 @@ impl ImportManager {
         })?;
         self.send_log(LogLevel::Info, "Elasticsearch 连接成功".to_string());
         
+        // 估算所有文件的总行数，用于决定是否需要索引分块
+        let mut all_estimated_rows = 0u64;
+        for file_path in &self.config.files {
+            let file_name = file_path
+                .file_name()
+                .and_then(|n| n.to_str())
+                .unwrap_or("unknown");
+            match estimate_total_rows(file_path) {
+                Ok(rows) => {
+                    all_estimated_rows += rows;
+                    self.send_log(
+                        LogLevel::Info,
+                        format!("文件 {} 估算行数: {}", file_name, rows),
+                    );
+                }
+                Err(e) => {
+                    self.send_log(
+                        LogLevel::Warning,
+                        format!("估算文件 {} 行数失败: {}", file_name, e),
+                    );
+                }
+            }
+        }
+        
+        self.send_log(
+            LogLevel::Info,
+            format!("所有文件估算总行数: {}", all_estimated_rows),
+        );
+        
+        // 基于所有文件的总行数创建分块管理器
+        let mut chunk_manager = ChunkManager::new(
+            self.config.es_config.index_name.clone(),
+            all_estimated_rows,
+        );
+        
+        let total_chunks = chunk_manager.total_chunks();
+        if total_chunks > 1 {
+            self.send_log(
+                LogLevel::Info,
+                format!("数据将分成 {} 个索引", total_chunks),
+            );
+        }
+        
         // 处理每个文件
         for file_path in &self.config.files {
             let file_name = file_path
@@ -53,43 +96,6 @@ impl ImportManager {
                 .to_string();
             
             self.send_log(LogLevel::Info, format!("开始处理文件: {}", file_name));
-            
-            // 估算总行数
-            let estimated_rows = match estimate_total_rows(file_path) {
-                Ok(rows) => rows,
-                Err(e) => {
-                    self.send_log(
-                        LogLevel::Warning,
-                        format!("估算文件 {} 行数失败: {}，跳过", file_name, e),
-                    );
-                    total_skipped += 1;
-                    continue;
-                }
-            };
-            
-            self.send_message(ProgressMessage::FileStarted {
-                file_name: file_name.clone(),
-                estimated_rows,
-            });
-            
-            self.send_log(
-                LogLevel::Info,
-                format!("估算总行数: {}", estimated_rows),
-            );
-            
-            // 创建分块管理器
-            let mut chunk_manager = ChunkManager::new(
-                self.config.es_config.index_name.clone(),
-                estimated_rows,
-            );
-            
-            let total_chunks = chunk_manager.total_chunks();
-            if total_chunks > 1 {
-                self.send_log(
-                    LogLevel::Info,
-                    format!("数据将分成 {} 个索引", total_chunks),
-                );
-            }
             
             // 读取 CSV
             let mut csv_reader = CsvReader::new(
@@ -109,6 +115,11 @@ impl ImportManager {
                 })?;
             
             let actual_total = csv_iter.total_rows() as u64;
+            
+            self.send_message(ProgressMessage::FileStarted {
+                file_name: file_name.clone(),
+                estimated_rows: actual_total,
+            });
             
             self.send_log(
                 LogLevel::Info,
