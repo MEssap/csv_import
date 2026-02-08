@@ -1,3 +1,6 @@
+// 在 Windows 上隐藏控制台窗口
+#![cfg_attr(target_os = "windows", windows_subsystem = "windows")]
+
 mod app;
 mod chunk;
 mod csv_reader;
@@ -16,7 +19,7 @@ fn main() -> Result<(), eframe::Error> {
     // 配置窗口选项
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
-            .with_inner_size([1000.0, 750.0])
+            .with_inner_size([1200.0, 800.0])
             .with_title("CSV 批量导入 Elasticsearch"),
         ..Default::default()
     };

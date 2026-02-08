@@ -90,6 +90,25 @@ pub fn decode_bytes(bytes: &[u8]) -> Result<String, String> {
     Ok(String::from_utf8_lossy(bytes).to_string())
 }
 
+/// 检测文件编码，返回是否为 UTF-8
+fn detect_encoding<P: AsRef<Path>>(path: P) -> Result<bool, String> {
+    let mut file = File::open(path.as_ref())
+        .map_err(|e| format!("打开文件失败: {}", e))?;
+    let mut sample = vec![0u8; 8192];
+    let n = file.read(&mut sample)
+        .map_err(|e| format!("读取文件失败: {}", e))?;
+    sample.truncate(n);
+    
+    // 去除 BOM
+    let sample = if sample.starts_with(&[0xEF, 0xBB, 0xBF]) {
+        &sample[3..]
+    } else {
+        &sample
+    };
+    
+    Ok(std::str::from_utf8(sample).is_ok())
+}
+
 /// CSV 读取器，支持编码检测和分隔符检测
 pub struct CsvReader {
     delimiter: u8,
@@ -119,23 +138,34 @@ impl CsvReader {
         
         self.delimiter = delim;
         
-        // 读取整个文件内容
-        let mut file = File::open(path.as_ref())
+        // 检测编码
+        let is_utf8 = detect_encoding(path.as_ref())?;
+        
+        if is_utf8 {
+            // UTF-8 文件：直接流式读取，不需要预先加载
+            self.read_csv_streaming(path.as_ref(), delim)
+        } else {
+            // 非 UTF-8 文件：需要先转码再解析
+            self.read_csv_transcode(path.as_ref(), delim)
+        }
+    }
+    
+    /// 流式读取 UTF-8 CSV 文件（高性能）
+    fn read_csv_streaming(
+        &self,
+        path: &Path,
+        delim: u8,
+    ) -> Result<CsvIterator, String> {
+        let file = File::open(path)
             .map_err(|e| format!("打开文件失败: {}", e))?;
+        let buf_reader = BufReader::with_capacity(256 * 1024, file);
         
-        let mut buffer = Vec::new();
-        file.read_to_end(&mut buffer)
-            .map_err(|e| format!("读取文件失败: {}", e))?;
-        
-        // 解码
-        let content = decode_bytes(&buffer)?;
-        
-        // 使用 csv crate 解析
         let mut reader = csv::ReaderBuilder::new()
             .delimiter(delim)
             .has_headers(true)
-            .flexible(true) // 允许字段数不一致
-            .from_reader(content.as_bytes());
+            .flexible(true)
+            .buffer_capacity(256 * 1024)
+            .from_reader(buf_reader);
         
         // 读取表头
         let headers = reader
@@ -154,7 +184,55 @@ impl CsvReader {
                     records.push(row);
                 }
                 Err(e) => {
-                    // 跳过错误行，继续处理
+                    log::warn!("跳过无效行: {}", e);
+                }
+            }
+        }
+        
+        Ok(CsvIterator {
+            headers,
+            records,
+            current: 0,
+            max_record_size: self.max_record_size,
+        })
+    }
+    
+    /// 转码读取非 UTF-8 CSV 文件
+    fn read_csv_transcode(
+        &self,
+        path: &Path,
+        delim: u8,
+    ) -> Result<CsvIterator, String> {
+        let mut file = File::open(path)
+            .map_err(|e| format!("打开文件失败: {}", e))?;
+        
+        let mut buffer = Vec::new();
+        file.read_to_end(&mut buffer)
+            .map_err(|e| format!("读取文件失败: {}", e))?;
+        
+        let content = decode_bytes(&buffer)?;
+        
+        let mut reader = csv::ReaderBuilder::new()
+            .delimiter(delim)
+            .has_headers(true)
+            .flexible(true)
+            .from_reader(content.as_bytes());
+        
+        let headers = reader
+            .headers()
+            .map_err(|e| format!("读取表头失败: {}", e))?
+            .clone();
+        
+        let headers: Vec<String> = headers.iter().map(|s| s.to_string()).collect();
+        
+        let mut records = Vec::new();
+        for result in reader.records() {
+            match result {
+                Ok(record) => {
+                    let row: Vec<String> = record.iter().map(|s| s.to_string()).collect();
+                    records.push(row);
+                }
+                Err(e) => {
                     log::warn!("跳过无效行: {}", e);
                 }
             }
