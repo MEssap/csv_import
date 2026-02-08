@@ -45,7 +45,10 @@ impl ImportManager {
         self.send_log(LogLevel::Info, "Elasticsearch 连接成功".to_string());
         
         // 估算所有文件的总行数，用于决定是否需要索引分块
+        self.send_log(LogLevel::Info, format!("正在估算 {} 个文件的总行数...", self.config.files.len()));
+        
         let mut all_estimated_rows = 0u64;
+        let mut failed_estimates = 0;
         for file_path in &self.config.files {
             let file_name = file_path
                 .file_name()
@@ -54,24 +57,27 @@ impl ImportManager {
             match estimate_total_rows(file_path) {
                 Ok(rows) => {
                     all_estimated_rows += rows;
-                    self.send_log(
-                        LogLevel::Info,
-                        format!("文件 {} 估算行数: {}", file_name, rows),
-                    );
+                    // 只在 debug 级别记录单个文件估算，避免日志过多导致 UI 卡顿
+                    log::debug!("文件 {} 估算行数: {}", file_name, rows);
                 }
                 Err(e) => {
-                    self.send_log(
-                        LogLevel::Warning,
-                        format!("估算文件 {} 行数失败: {}", file_name, e),
-                    );
+                    failed_estimates += 1;
+                    log::warn!("估算文件 {} 行数失败: {}", file_name, e);
                 }
             }
         }
         
-        self.send_log(
-            LogLevel::Info,
-            format!("所有文件估算总行数: {}", all_estimated_rows),
-        );
+        if failed_estimates > 0 {
+            self.send_log(
+                LogLevel::Warning,
+                format!("估算总行数: {} ({} 个文件估算失败)", all_estimated_rows, failed_estimates),
+            );
+        } else {
+            self.send_log(
+                LogLevel::Info,
+                format!("估算总行数: {}", all_estimated_rows),
+            );
+        }
         
         // 基于所有文件的总行数创建分块管理器
         let mut chunk_manager = ChunkManager::new(
@@ -174,11 +180,8 @@ impl ImportManager {
                         }
                     }
                     Some(Err(e)) => {
-                        // 记录跳过
-                        self.send_log(
-                            LogLevel::Warning,
-                            format!("跳过记录: {}", e),
-                        );
+                        // 记录跳过，但使用 debug 级别避免日志过多
+                        log::debug!("跳过记录: {}", e);
                         file_skipped += 1;
                         imported += 1;
                         
@@ -219,6 +222,14 @@ impl ImportManager {
                 skipped: file_skipped,
             });
             
+            // 如果有跳过的记录，在文件完成时汇总显示
+            if file_skipped > 0 {
+                self.send_log(
+                    LogLevel::Warning,
+                    format!("文件 {} 跳过了 {} 条记录", file_name, file_skipped),
+                );
+            }
+            
             total_success += file_success;
             total_failed += file_failed;
             total_skipped += file_skipped;
@@ -245,8 +256,16 @@ impl ImportManager {
         match client.bulk_index(index_name, batch.to_vec()) {
             Ok(result) => {
                 if result.failed > 0 {
-                    for error in &result.errors {
+                    // 只显示前几个错误，避免日志过多
+                    let max_errors_to_show = 3;
+                    for error in result.errors.iter().take(max_errors_to_show) {
                         self.send_log(LogLevel::Warning, format!("导入错误: {}", error));
+                    }
+                    if result.errors.len() > max_errors_to_show {
+                        self.send_log(
+                            LogLevel::Warning,
+                            format!("...还有 {} 个错误未显示", result.errors.len() - max_errors_to_show)
+                        );
                     }
                 }
                 (result.success as u64, result.failed as u64)
